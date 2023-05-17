@@ -12,6 +12,7 @@ from langchain.embeddings.base import Embeddings
 from langchain.utils import xor_args
 from langchain.vectorstores.base import VectorStore
 from langchain.vectorstores.utils import maximal_marginal_relevance
+import re
 
 if TYPE_CHECKING:
     import chromadb
@@ -177,9 +178,27 @@ class Chroma(VectorStore):
 
         Returns:
             List[Document]: List of documents most similar to the query text.
+            n_post_filters: Number of documents returned after filtering
         """
         docs_and_scores = self.similarity_search_with_score(query, k, filter=filter)
-        return [doc for doc, _ in docs_and_scores]
+
+        ## VS: Updated code
+        n_post_filters = len(docs_and_scores)
+        docs = [doc for doc, _ in docs_and_scores]
+        # relevant_docs_and_scores = docs_and_scores[:50]
+        # relevant_docs = [doc for doc, _ in relevant_docs_and_scores]
+        # 0.4 logic
+        # relevant_docs_and_scores = [doc_score for doc_score in docs_and_scores if doc_score[1] < 0.4]
+        # print(len(relevant_docs_and_scores))
+        # if not relevant_docs_and_scores:
+        #     relevant_docs_and_scores = docs_and_scores[:100]
+        ## VS: Updated code ends
+
+        # return [doc for doc, _ in docs_and_scores]
+        return [docs, n_post_filters]
+
+        ## VS: Updated code ends
+        # return [doc for doc, _ in docs_and_scores]
 
     def similarity_search_by_vector(
         self,
@@ -418,6 +437,35 @@ class Chroma(VectorStore):
         """
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
+
+        ## VS: Updated code
+        # Updating texts and metadata, adding metadata fields in metadatas, leaving only Comment in texts
+        new_documents = []
+        for document in documents:
+            # Split the content into fields
+            fields = document.page_content.split('\n')
+            # Initialize a new metadata dictionary and new_page_content variable
+            new_metadata = document.metadata.copy()
+            new_page_content = ''
+            # Extract and process fields
+            for field in fields:
+                key, value = field.split(':', 1)
+                key = key.strip()
+                value = value.strip()
+                # Remove special characters like \ufeff, etc.
+                key = re.sub(r'\ufeff', '', key)
+                value = re.sub(r'\ufeff', '', value)
+                if key == 'Comment':
+                    new_page_content = value
+                else:
+                    new_metadata[key] = value
+            # Create a new Document with the updated page_content and metadata
+            new_document = Document(page_content=new_page_content, metadata=new_metadata)
+            new_documents.append(new_document)
+        texts = [doc.page_content for doc in new_documents]
+        metadatas = [doc.metadata for doc in new_documents]
+        ## VS: End updated code
+
         return cls.from_texts(
             texts=texts,
             embedding=embedding,
