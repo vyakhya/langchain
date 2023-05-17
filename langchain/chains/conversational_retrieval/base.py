@@ -62,7 +62,10 @@ class BaseConversationalRetrievalChain(Chain):
     class Config:
         """Configuration for this pydantic object."""
 
-        extra = Extra.forbid
+        # extra = Extra.forbid
+        ## VS update
+        extra = Extra.allow
+        ## VS update ends
         arbitrary_types_allowed = True
         allow_population_by_field_name = True
 
@@ -244,7 +247,11 @@ class ChatVectorDBChain(BaseConversationalRetrievalChain):
     """Chain for chatting with a vector database."""
 
     vectorstore: VectorStore = Field(alias="vectorstore")
-    top_k_docs_for_context: int = 4
+    # top_k_docs_for_context: int = 4
+    # VS Update:
+    n_docs_pre_filter: int = 3490
+    top_k_docs_for_context: int = 50
+    # VS Update ends
     search_kwargs: dict = Field(default_factory=dict)
 
     @property
@@ -261,10 +268,26 @@ class ChatVectorDBChain(BaseConversationalRetrievalChain):
 
     def _get_docs(self, question: str, inputs: Dict[str, Any]) -> List[Document]:
         vectordbkwargs = inputs.get("vectordbkwargs", {})
-        full_kwargs = {**self.search_kwargs, **vectordbkwargs}
-        return self.vectorstore.similarity_search(
-            question, k=self.top_k_docs_for_context, **full_kwargs
+        # full_kwargs = {**self.search_kwargs, **vectordbkwargs}
+        # return self.vectorstore.similarity_search(
+        #     question, k=self.top_k_docs_for_context, **full_kwargs
+        # )
+        ## VS update code:
+        search_kwargs = inputs.get("search_kwargs", {})
+        full_kwargs = {**search_kwargs, **vectordbkwargs}
+        documents = self.vectorstore.similarity_search(
+            question, n=self.n_docs_pre_filter, k=self.top_k_docs_for_context, **full_kwargs
         )
+        ## Old update - getting unique documents is not needed, earlier I had duplicates in chromadb due to running ingest_data.py twice
+        # unique_documents = []
+        # for doc in documents:
+        #     if not any(d.page_content == doc.page_content and d.metadata == doc.metadata for d in unique_documents):
+        #         unique_documents.append(doc)
+        # print(len(documents))
+        # print(len(unique_documents))
+        # return unique_documents
+        return documents
+        ## VS Updated code ends ##
 
     async def _aget_docs(self, question: str, inputs: Dict[str, Any]) -> List[Document]:
         raise NotImplementedError("ChatVectorDBChain does not support async")

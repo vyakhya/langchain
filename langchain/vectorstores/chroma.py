@@ -165,6 +165,7 @@ class Chroma(VectorStore):
     def similarity_search(
         self,
         query: str,
+        n: int = 100,
         k: int = 4,
         filter: Optional[Dict[str, str]] = None,
         **kwargs: Any,
@@ -180,11 +181,12 @@ class Chroma(VectorStore):
             List[Document]: List of documents most similar to the query text.
             n_post_filters: Number of documents returned after filtering
         """
-        docs_and_scores = self.similarity_search_with_score(query, k, filter=filter)
+        docs_and_scores = self.similarity_search_with_score(query, n, filter=filter)
 
         ## VS: Updated code
         n_post_filters = len(docs_and_scores)
         docs = [doc for doc, _ in docs_and_scores]
+        top_k_docs = docs[:k]
         # relevant_docs_and_scores = docs_and_scores[:50]
         # relevant_docs = [doc for doc, _ in relevant_docs_and_scores]
         # 0.4 logic
@@ -195,7 +197,7 @@ class Chroma(VectorStore):
         ## VS: Updated code ends
 
         # return [doc for doc, _ in docs_and_scores]
-        return [docs, n_post_filters]
+        return [top_k_docs, n_post_filters]
 
         ## VS: Updated code ends
         # return [doc for doc, _ in docs_and_scores]
