@@ -109,9 +109,17 @@ class BaseConversationalRetrievalChain(Chain):
 
         # VS: Updated code
         relevant_docs, n_post_filters = self._get_docs(new_question, inputs)
+        if n_post_filters == 0:
+            result = {"answer": "No comments found for these attributes",
+                      "filter": filter,
+                      "n_comments": n_post_filters}
+            return {self.output_key: result}
         if n_post_filters < 10:
-            answer = "No. of comments in this group is less than the confidentiality threshold (10). Please try broadening the group."
-            return {self.output_key: answer}
+            result = {"answer": "No. of comments in this group is less than the confidentiality threshold (10)."
+                                "Please try broadening the group.",
+                      "filter": filter,
+                      "n_comments": n_post_filters}
+            return {self.output_key: result}
         else:
             new_inputs = inputs.copy()
             new_inputs["question"] = new_question
@@ -122,11 +130,11 @@ class BaseConversationalRetrievalChain(Chain):
             except Exception:
                 filter = 'No filters applied'
             # answer = f"{answer} \n\n {filter} No. of comments in this group = {n_post_filters}"
-            answer = {"answer": answer, "filter": filter, "n_comments": n_post_filters}
+            result = {"answer": answer, "filter": filter, "n_comments": n_post_filters}
             if self.return_source_documents:
-                return {self.output_key: answer, "source_documents": relevant_docs}
+                return {self.output_key: result, "source_documents": relevant_docs}
             else:
-                return {self.output_key: answer}
+                return {self.output_key: result}
         #VS: Updated code ends
 
         # docs = self._get_docs(new_question, inputs)
