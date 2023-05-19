@@ -108,21 +108,53 @@ class BaseConversationalRetrievalChain(Chain):
             new_question = question
 
         # VS: Updated code
+
         try:
             filter = inputs.get("search_kwargs", {})['filter']
         except Exception:
             filter = 'No filters applied'
 
+        # Transform filter to simpler format for output
+        if filter == 'No filters applied':
+            simplified_filter = filter
+        else:
+            simplified_filter = {}
+
+            if '$and' in filter:
+                conditions = filter['$and']
+            else:
+                conditions = [filter]
+
+            for condition in conditions:
+                # loop through the $or condition, if any
+                if '$or' in condition:
+                    for or_condition in condition['$or']:
+                        for key, value in or_condition.items():
+                            # if key is already in the result dictionary, append the value
+                            if key in simplified_filter:
+                                simplified_filter[key].append(value['$eq'])
+                            else:
+                                simplified_filter[key] = [value['$eq']]
+                else:
+                    # if no $or condition
+                    for key, value in condition.items():
+                        if key in simplified_filter:
+                            simplified_filter[key].append(value['$eq'])
+                        else:
+                            simplified_filter[key] = [value['$eq']]
+
         relevant_docs, n_post_filters = self._get_docs(new_question, inputs)
         if n_post_filters == 0:
             result = {"answer": "No comments found for these attributes",
                       "filter": filter,
+                      "simplified_filter": simplified_filter,
                       "n_comments": n_post_filters}
             return {self.output_key: result}
         if n_post_filters < 10:
             result = {"answer": "No. of comments in this group is less than the confidentiality threshold (10)."
                                 "Please try broadening the group.",
                       "filter": filter,
+                      "simplified_filter": simplified_filter,
                       "n_comments": n_post_filters}
             return {self.output_key: result}
         else:
@@ -131,7 +163,11 @@ class BaseConversationalRetrievalChain(Chain):
             new_inputs["chat_history"] = chat_history_str
             answer, _ = self.combine_docs_chain.combine_docs(relevant_docs, **new_inputs)
             # answer = f"{answer} \n\n {filter} No. of comments in this group = {n_post_filters}"
-            result = {"answer": answer, "filter": filter, "n_comments": n_post_filters}
+            result = {
+                "answer": answer,
+                "filter": filter,
+                "simplified_filter": simplified_filter,
+                "n_comments": n_post_filters}
             if self.return_source_documents:
                 return {self.output_key: result, "source_documents": relevant_docs}
             else:
