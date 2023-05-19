@@ -181,9 +181,15 @@ class Chroma(VectorStore):
             List[Document]: List of documents most similar to the query text.
             n_post_filters: Number of documents returned after filtering
         """
-        docs_and_scores = self.similarity_search_with_score(query, n, filter=filter)
+        # docs_and_scores = self.similarity_search_with_score(query, n, filter=filter)
 
         ## VS: Updated code
+        try:
+            docs_and_scores = self.similarity_search_with_score(query, n, filter=filter)
+        except Exception as e:
+            print(f"No documents returned based on filter: {filter}")
+            return [[], 0]
+
         n_post_filters = len(docs_and_scores)
         docs = [doc for doc, _ in docs_and_scores]
         top_k_docs = docs[:k]
