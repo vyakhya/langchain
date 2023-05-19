@@ -108,6 +108,11 @@ class BaseConversationalRetrievalChain(Chain):
             new_question = question
 
         # VS: Updated code
+        try:
+            filter = inputs.get("search_kwargs", {})['filter']
+        except Exception:
+            filter = 'No filters applied'
+
         relevant_docs, n_post_filters = self._get_docs(new_question, inputs)
         if n_post_filters == 0:
             result = {"answer": "No comments found for these attributes",
@@ -125,10 +130,6 @@ class BaseConversationalRetrievalChain(Chain):
             new_inputs["question"] = new_question
             new_inputs["chat_history"] = chat_history_str
             answer, _ = self.combine_docs_chain.combine_docs(relevant_docs, **new_inputs)
-            try:
-                filter = inputs.get("search_kwargs", {})['filter']
-            except Exception:
-                filter = 'No filters applied'
             # answer = f"{answer} \n\n {filter} No. of comments in this group = {n_post_filters}"
             result = {"answer": answer, "filter": filter, "n_comments": n_post_filters}
             if self.return_source_documents:
