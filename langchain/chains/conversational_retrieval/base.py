@@ -115,8 +115,8 @@ class BaseConversationalRetrievalChain(Chain):
             filter = 'No filters applied'
 
         # Transform filter to simpler format for output
-        if filter == 'No filters applied':
-            simplified_filter = filter
+        if filter is None or filter == 'No filters applied':
+            simplified_filter = 'No filters applied'
         else:
             simplified_filter = {}
 
